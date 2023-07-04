@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo</title>
+    <style>
+        #screen {
+            border: 3px solid #CCC;
+        }
+    </style>
+    <script>
+        const width = 700;
+        const height = 500;
+    </script>
+</head>
+
+<body>
+    <canvas id="screen" width="700" height="500"></canvas>
+    <div id="textID"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var jogadores = [];
+        var j1 = null;
+        var j2 = null;
+        const socket = io();
+        if (jogadores.length < 2) {
+            socket.on('msg', function (msg) {
+                if (socket.id == msg[1] && msg[0] == 2) {
+                    j1 = new Jogador(1, width, height);
+                    jogadores.push(msg[2]);
+                }
+                jogadores.push(msg[1]);
+                addPlayer(msg[0]);
+            })
+        }
+        socket.on('noMorePlayers', function (j) {
+            if (jogadores.indexOf(socket.id) == -1) {
+                jogadores.push(j[0]);
+                jogadores.push(j[1]);
+                j1 = new Jogador(1, width, height);
+                j2 = new Jogador(2, width, height);
+                document.querySelector('#textID').innerHTML = `<h1>VOCÊ ESTÁ APENAS ASSISTINDO</h1>`;
+            }
+            console.log("Não mais");
+        });
+        socket.on('RemovePlayer', (p) => {
+            jogadores = [];
+            jogadores.push(p[0]);
+            if (typeof intervalDraw != "undefined") {
+                clearInterval(intervalDraw);
+            }
+            if (jogadores.length == 1) {
+                if (socket.id == jogadores[0]) {
+                    document.querySelector('#textID').innerHTML = `<h1>VOCÊ É O VERMELHO</h1>`;
+                }
+                j2 = null;
+            } else if (jogadores.length == 0) {
+                j1 = null;
+                j2 = null;
+            }
+            gerenciar.rodar = false;
+            addDraw();
+            console.log(jogadores);
+            console.log("Players redirecionado");
+        });
+        socket.on('gameposition', function (jogo) {
+            j1.x = jogo.player1.x;
+            j1.y = jogo.player1.y;
+            if (jogadores.length == 2) {
+                j2.x = jogo.player2.x;
+                j2.y = jogo.player2.y;
+                bola.x = jogo.bola.x;
+                bola.y = jogo.bola.y;
+                bola.velocidadeX = jogo.bola.vx;
+                bola.velocidadeY = jogo.bola.vy;
+                if (gerenciar.rodar) {
+                    bola.baterParede();
+                    bola.baterJogador(j1.x, j1.y, j2.x, j2.y, j1.largura, j1.altura);
+                    bola.movimentar();
+                }
+            }
+        })
+        function addPlayer(qnt = 1) {
+            if (qnt <= 2) {
+                if (qnt == 1) {
+                    j1 = new Jogador(1, width, height);
+                    socket.emit('msg', [j1.x, j1.y, qnt, jogadores[0]]);
+                    document.querySelector('#textID').innerHTML = `<h1>VOCÊ É O VERMELHO</h1>`;
+                } else if (qnt == 2) {
+                    j2 = new Jogador(2, width, height);
+                    socket.emit('msg', [j2.x, j2.y, qnt, jogadores[1]]);
+                    if (socket.id == jogadores[1]) {
+                        document.querySelector('#textID').innerHTML = `<h1>VOCÊ É O AZUL</h1>`;
+                    }
+                }
+            }
+
+        }
+    </script>
+    <script src="./assets/Jogador.js" type="text/javascript"></script>
+    <script src="./assets/Bola.js" type="text/javascript"></script>
+    <script src="./assets/Gerenciar.js" type="text/javascript"></script>
+    <script src="./assets/jogo.js" type="text/javascript"></script>
+</body>
+
+</html>
